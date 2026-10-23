@@ -147,7 +147,14 @@ export default function AdminAttendanceTable({
                     {item.nip || '-'}
                   </td>
                   <td className="py-3.5 px-4 font-semibold text-slate-900">
-                    {item.name}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span>{item.name}</span>
+                      {item.isDutyTeacher && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                          ⭐ Piket Pagi
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600">
                     {item.role || item.position || '-'}

@@ -270,6 +270,18 @@ export default function AttendanceSuccessModal({
                   </span>
                 </div>
               )}
+
+              {data.isDutyTeacher && (
+                <div className="pt-2 border-t border-amber-200/70 text-[11px] text-amber-900 flex items-center justify-between bg-amber-100/70 -mx-4 -mb-4 p-3 rounded-b-2xl">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    Tugas Piket Pagi Terverifikasi:
+                  </span>
+                  <span className="font-semibold text-amber-800">
+                    {data.dutyInfo?.role || 'Guru Piket Pagi'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Action Button: Selesai & Mengerti dengan Animasi Interaktif */}

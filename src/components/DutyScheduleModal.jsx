@@ -24,7 +24,8 @@ export default function DutyScheduleModal({
   isOpen,
   onClose,
   dutySchedule,
-  currentUser
+  currentUser,
+  todayAttendanceList = []
 }) {
   const todayDayName = getIndonesianDayName();
   const [selectedDay, setSelectedDay] = useState(
@@ -230,49 +231,82 @@ export default function DutyScheduleModal({
               {activeDayTeachers.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {activeDayTeachers.map((teacher, index) => {
-                    const isCurrent = currentUser?.nip && teacher.nip && currentUser.nip === teacher.nip;
+                    const isCurrent = (currentUser?.nip && teacher.nip && currentUser.nip === teacher.nip) ||
+                      (currentUser?.name && teacher.name && currentUser.name.trim().toLowerCase() === teacher.name.trim().toLowerCase());
+
+                    const isTodayView = selectedDay === todayDayName;
+                    const attRecord = isTodayView ? (todayAttendanceList || []).find(a => 
+                      (teacher.nip && a.nip && a.nip === teacher.nip) || 
+                      (teacher.name && a.name && a.name.trim().toLowerCase() === teacher.name.trim().toLowerCase())
+                    ) : null;
+                    const hasCheckedIn = Boolean(attRecord && attRecord.checkIn);
+
                     return (
                       <div
                         key={teacher.id || index}
-                        className={`p-3.5 rounded-2xl border transition-all ${
+                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
                           isCurrent 
                             ? 'bg-amber-50/90 border-amber-300 ring-1 ring-amber-400/50 shadow-xs' 
                             : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                              isCurrent 
-                                ? 'bg-amber-600 text-white' 
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}>
-                              {teacher.name ? teacher.name.slice(0, 2).toUpperCase() : 'GT'}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs sm:text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
-                                <span>{teacher.name}</span>
-                                {isCurrent && (
-                                  <span className="text-[9px] text-amber-700 font-bold bg-amber-200/80 px-1.5 py-0.2 rounded">
-                                    Anda
-                                  </span>
-                                )}
-                              </p>
-                              {teacher.nip && (
-                                <p className="text-[10px] text-slate-400 font-mono">
-                                  NIP: {teacher.nip}
+                        <div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                                isCurrent 
+                                  ? 'bg-amber-600 text-white' 
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}>
+                                {teacher.name ? teacher.name.slice(0, 2).toUpperCase() : 'GT'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
+                                  <span>{teacher.name}</span>
+                                  {isCurrent && (
+                                    <span className="text-[9px] text-amber-700 font-bold bg-amber-200/80 px-1.5 py-0.2 rounded">
+                                      Anda
+                                    </span>
+                                  )}
                                 </p>
-                              )}
+                                {teacher.nip && (
+                                  <p className="text-[10px] text-slate-400 font-mono">
+                                    NIP: {teacher.nip}
+                                  </p>
+                                )}
+                              </div>
                             </div>
+
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 border ${
+                              teacher.role?.toLowerCase().includes('koordinator')
+                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}>
+                              {teacher.role || 'Guru Piket'}
+                            </span>
                           </div>
 
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 border ${
-                            teacher.role?.toLowerCase().includes('koordinator')
-                              ? 'bg-amber-100 text-amber-800 border-amber-300'
-                              : 'bg-slate-100 text-slate-700 border-slate-200'
-                          }`}>
-                            {teacher.role || 'Guru Piket'}
-                          </span>
+                          {/* Status Absen Masuk Hari Ini (Tanpa Absen Pulang) */}
+                          {isTodayView && (
+                            <div className="mt-2.5 flex items-center gap-2">
+                              {hasCheckedIn ? (
+                                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>Masuk: {attRecord.checkIn}</span>
+                                  {attRecord.isLate && (
+                                    <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1 rounded ml-1">
+                                      Terlambat
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1.5 text-[10px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg">
+                                  <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>Belum Absen Masuk</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Location and details */}

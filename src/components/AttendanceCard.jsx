@@ -9,7 +9,9 @@ import {
   ArrowRight,
   Loader2,
   Clock,
-  Lock
+  Lock,
+  Sunrise,
+  Sparkles
 } from 'lucide-react';
 import { 
   getAttendanceScheduleStatus, 
@@ -23,7 +25,9 @@ export default function AttendanceCard({
   onCheckIn,
   onCheckOut,
   systemConfig,
-  isProcessing = false
+  isProcessing = false,
+  isOnDutyToday = false,
+  dutyInfo = null
 }) {
   // Timer evaluasi realtime jadwal (setiap 5 detik)
   const [, setTick] = useState(Date.now());
@@ -140,9 +144,13 @@ export default function AttendanceCard({
             disabled={!canCheckIn}
             className={`w-full relative overflow-hidden rounded-2xl p-4 sm:p-5 flex items-center justify-between text-left transition-all duration-200 ${
               canCheckIn
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-700/20 hover:shadow-xl hover:shadow-emerald-700/30 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer'
+                ? isOnDutyToday
+                  ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white shadow-lg shadow-amber-600/30 hover:shadow-xl hover:shadow-amber-600/40 hover:-translate-y-0.5 active:translate-y-0 ring-2 ring-amber-400/40 cursor-pointer'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-700/20 hover:shadow-xl hover:shadow-emerald-700/30 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer'
                 : isMasuk || isPulang
-                ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-800 opacity-90 cursor-not-allowed'
+                ? isOnDutyToday
+                  ? 'bg-amber-50/90 border border-amber-300 text-amber-900 opacity-95 cursor-not-allowed shadow-2xs'
+                  : 'bg-emerald-50/80 border border-emerald-200 text-emerald-800 opacity-90 cursor-not-allowed'
                 : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
@@ -155,7 +163,7 @@ export default function AttendanceCard({
                 canCheckIn 
                   ? 'bg-white/20 text-white shadow-inner' 
                   : isMasuk || isPulang 
-                  ? 'bg-emerald-100 text-emerald-700' 
+                  ? isOnDutyToday ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700' 
                   : 'bg-slate-200 text-slate-400'
               }`}>
                 {isProcessing && !isMasuk ? (
@@ -164,20 +172,32 @@ export default function AttendanceCard({
                   <CheckCircle2 className="w-6 h-6" />
                 ) : !schedule.checkInAllowed ? (
                   <Lock className="w-6 h-6 text-slate-400" />
+                ) : isOnDutyToday ? (
+                  <Sunrise className="w-6 h-6 text-amber-200 animate-pulse" />
                 ) : (
                   <LogIn className="w-6 h-6" />
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider font-semibold opacity-80">
-                  Aksi Pagi (Shift Masuk)
+                <p className={`text-xs uppercase tracking-wider font-semibold ${
+                  isOnDutyToday ? 'text-amber-200 font-bold flex items-center gap-1' : 'opacity-80'
+                }`}>
+                  {isOnDutyToday 
+                    ? `⭐ Petugas Piket Pagi (${dutyInfo?.location || 'Gerbang & Lobi'})`
+                    : 'Aksi Pagi (Shift Masuk)'}
                 </p>
                 <h3 className="text-base sm:text-lg font-bold tracking-tight">
-                  {isProcessing && !isMasuk ? 'Mencatat Kehadiran...' : 'Presensi Masuk'}
+                  {isProcessing && !isMasuk 
+                    ? 'Mencatat Kehadiran Piket...' 
+                    : isOnDutyToday && !isMasuk && !isPulang
+                    ? 'Presensi Masuk & Mulai Piket Pagi'
+                    : isOnDutyToday && (isMasuk || isPulang)
+                    ? 'Presensi Masuk (Piket Aktif)'
+                    : 'Presensi Masuk'}
                 </h3>
                 <p className="text-xs mt-0.5 font-medium opacity-90">
                   {isMasuk || isPulang
-                    ? `Tercatat: ${attendanceState.checkInTime}`
+                    ? `Tercatat: ${attendanceState.checkInTime} ${isOnDutyToday ? '• Guru Piket Hadir' : ''}`
                     : schedule.checkInStatusMsg}
                 </p>
               </div>

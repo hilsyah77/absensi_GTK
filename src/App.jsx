@@ -107,6 +107,9 @@ export default function App() {
   // Duty Schedule state
   const [dutySchedule, setDutySchedule] = useState(() => getDutySchedule());
   
+  // Today's full attendance list for recap
+  const [todayAttendanceList, setTodayAttendanceList] = useState([]);
+
   // Center Attendance Success Modal state
   const [successModalData, setSuccessModalData] = useState({
     isOpen: false,
@@ -116,7 +119,9 @@ export default function App() {
     time: '',
     statusBadge: '',
     location: '',
-    userName: ''
+    userName: '',
+    isDutyTeacher: false,
+    dutyInfo: null
   });
 
   // System configuration from admin (geofencing & shift hours)
@@ -135,7 +140,9 @@ export default function App() {
     const myNip = currentUser.nip || (userRole === 'guru' ? 'GTK-GURU' : 'GTK-TENDIK');
 
     const unsubAttendance = subscribeAttendances(today, (records) => {
-      const myRecord = records.find(r => r.nip === myNip);
+      const recs = records || [];
+      setTodayAttendanceList(recs);
+      const myRecord = recs.find(r => r.nip === myNip);
       if (myRecord) {
         setAttendanceState({
           status: myRecord.checkOut ? 'pulang' : (myRecord.checkIn ? 'masuk' : 'belum'),
@@ -196,6 +203,7 @@ export default function App() {
       const myName = currentUser.name || (userRole === 'guru' ? 'Guru Madrasah' : 'Tenaga Kependidikan');
 
       const isLate = schedule.isLate;
+      const dutyStatus = isUserOnDutyToday(currentUser, dutySchedule);
 
       saveAttendanceRecord({
         nip: myNip,
@@ -207,7 +215,10 @@ export default function App() {
         checkOut: null,
         status: isLate ? 'Terlambat' : 'Hadir',
         isLate: isLate,
-        location: `${systemConfig.locationName || 'Kampus Utama MTs Asy-Syafi\'iyyah'} (Radius ${systemConfig.radius || 50}m Valid)`
+        location: `${systemConfig.locationName || 'Kampus Utama MTs Asy-Syafi\'iyyah'} (Radius ${systemConfig.radius || 50}m Valid)`,
+        isDutyTeacher: dutyStatus.isOnDuty,
+        dutyRole: dutyStatus.isOnDuty ? (dutyStatus.dutyInfo?.role || 'Piket Pagi') : null,
+        dutyLocation: dutyStatus.isOnDuty ? (dutyStatus.dutyInfo?.location || 'Gerbang Utama & Pos Piket') : null
       });
 
       setAttendanceState({
@@ -218,19 +229,27 @@ export default function App() {
       });
       setIsProcessing(false);
       
-      // Tampilkan Pop-Up di tengah: Absen Masuk Berhasil
+      // Tampilkan Pop-Up di tengah: Absen Masuk Berhasil (Opsi 1: Otomatis Sertakan Status Piket)
       setSuccessModalData({
         isOpen: true,
         type: 'masuk',
-        title: 'Presensi Masuk Berhasil!',
-        subtitle: 'Kehadiran pagi Anda telah berhasil divalidasi dan tercatat dalam sistem server GTK.',
+        title: dutyStatus.isOnDuty ? 'Presensi Masuk & Piket Pagi Berhasil!' : 'Presensi Masuk Berhasil!',
+        subtitle: dutyStatus.isOnDuty
+          ? 'Kehadiran Anda sebagai Petugas Piket Pagi telah divalidasi dan tercatat dalam sistem server GTK.'
+          : 'Kehadiran pagi Anda telah berhasil divalidasi dan tercatat dalam sistem server GTK.',
         time: timeStr,
         statusBadge: isLate ? 'Terlambat' : 'Tepat Waktu',
         location: `${systemConfig.locationName || 'Kampus Utama MTs Asy-Syafi\'iyyah'} (Radius Valid)`,
-        userName: myName
+        userName: myName,
+        isDutyTeacher: dutyStatus.isOnDuty,
+        dutyInfo: dutyStatus.dutyInfo
       });
 
-      showToast('Presensi Masuk Berhasil', `Kehadiran tercatat pada ${timeStr} (Tersimpan ke Database).`, 'success');
+      showToast(
+        dutyStatus.isOnDuty ? 'Presensi & Piket Tercatat' : 'Presensi Masuk Berhasil',
+        `Kehadiran ${dutyStatus.isOnDuty ? 'sebagai Petugas Piket ' : ''}tercatat pada ${timeStr}.`,
+        'success'
+      );
     }, 450);
   };
 
@@ -472,39 +491,49 @@ export default function App() {
           <DigitalClock />
         </section>
 
-        {/* 3. Card Presensi Utama (Call to Action) */}
-        <section aria-label="Aksi Presensi Utama">
-          <AttendanceCard
-            attendanceState={attendanceState}
-            isInRadius={isInRadius}
-            setIsInRadius={handleToggleRadius}
-            onCheckIn={handleCheckIn}
-            onCheckOut={handleCheckOut}
-            systemConfig={systemConfig}
-            isProcessing={isProcessing}
-          />
-        </section>
+        {/* 3. Card Presensi Utama (Call to Action - Opsi 1: Satu Tombol Cerdas Terpadu) */}
+        {(() => {
+          const currentDutyStatus = isUserOnDutyToday(currentUser, dutySchedule);
+          return (
+            <>
+              <section aria-label="Aksi Presensi Utama">
+                <AttendanceCard
+                  attendanceState={attendanceState}
+                  isInRadius={isInRadius}
+                  setIsInRadius={handleToggleRadius}
+                  onCheckIn={handleCheckIn}
+                  onCheckOut={handleCheckOut}
+                  systemConfig={systemConfig}
+                  isProcessing={isProcessing}
+                  isOnDutyToday={currentDutyStatus.isOnDuty}
+                  dutyInfo={currentDutyStatus.dutyInfo}
+                />
+              </section>
 
-        {/* 3B. Jadwal Piket Guru Masuk Pagi (Hari Ini & Lengkap) */}
-        <section aria-label="Jadwal Piket Guru Masuk Pagi">
-          <DutyScheduleCard
-            dutySchedule={dutySchedule}
-            currentUser={currentUser}
-            onOpenFullSchedule={() => setIsDutyScheduleModalOpen(true)}
-          />
-        </section>
+              {/* 3B. Jadwal Piket Guru Masuk Pagi (Hari Ini & Lengkap - Rekap Absen Masuk Saja) */}
+              <section aria-label="Jadwal Piket Guru Masuk Pagi">
+                <DutyScheduleCard
+                  dutySchedule={dutySchedule}
+                  currentUser={currentUser}
+                  todayAttendanceList={todayAttendanceList}
+                  onOpenFullSchedule={() => setIsDutyScheduleModalOpen(true)}
+                />
+              </section>
 
-        {/* 4. Menu Aksi Cepat (Quick Actions Grid) */}
-        <section aria-label="Menu Aksi Cepat">
-          <QuickActions
-            onOpenLeaveModal={() => setIsLeaveModalOpen(true)}
-            onOpenHistory={() => setIsMonthlyReportOpen(true)}
-            onOpenProfile={() => setIsProfileModalOpen(true)}
-            onOpenDutySchedule={() => setIsDutyScheduleModalOpen(true)}
-            leaveCount={leaveRequests.length}
-            isOnDutyToday={isUserOnDutyToday(currentUser, dutySchedule).isOnDuty}
-          />
-        </section>
+              {/* 4. Menu Aksi Cepat (Quick Actions Grid) */}
+              <section aria-label="Menu Aksi Cepat">
+                <QuickActions
+                  onOpenLeaveModal={() => setIsLeaveModalOpen(true)}
+                  onOpenHistory={() => setIsMonthlyReportOpen(true)}
+                  onOpenProfile={() => setIsProfileModalOpen(true)}
+                  onOpenDutySchedule={() => setIsDutyScheduleModalOpen(true)}
+                  leaveCount={leaveRequests.length}
+                  isOnDutyToday={currentDutyStatus.isOnDuty}
+                />
+              </section>
+            </>
+          );
+        })()}
 
         {/* 5. Section Riwayat Presensi Hari Ini & Pengajuan Cuti */}
         <section id="activity-section" aria-label="Riwayat Presensi dan Cuti">
@@ -577,6 +606,7 @@ export default function App() {
         onClose={() => setIsDutyScheduleModalOpen(false)}
         dutySchedule={dutySchedule}
         currentUser={currentUser}
+        todayAttendanceList={todayAttendanceList}
       />
 
       {/* Pop-up Modal Sukses Presensi di Tengah Layar */}
