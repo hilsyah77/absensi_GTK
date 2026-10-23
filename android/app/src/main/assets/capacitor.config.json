@@ -1,0 +1,8 @@
+{
+	"appId": "com.madrasah.presensi",
+	"appName": "Presensi GTK",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}
