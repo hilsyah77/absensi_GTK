@@ -3,16 +3,30 @@ import {
   FileText, 
   CalendarClock, 
   UserCheck, 
-  ChevronRight
+  ChevronRight,
+  Sunrise
 } from 'lucide-react';
 
 export default function QuickActions({
   onOpenLeaveModal,
   onOpenHistory,
   onOpenProfile,
-  leaveCount = 0
+  onOpenDutySchedule,
+  leaveCount = 0,
+  isOnDutyToday = false
 }) {
   const actions = [
+    {
+      id: 'piket',
+      title: 'Jadwal Piket Pagi',
+      subtitle: 'Petugas piket gerbang & SOP',
+      icon: Sunrise,
+      iconColor: 'text-amber-600',
+      iconBg: 'bg-amber-50 border-amber-200/60',
+      badge: isOnDutyToday ? 'Piket Hari Ini' : 'Senin-Sabtu',
+      badgeColor: isOnDutyToday ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700',
+      onClick: onOpenDutySchedule
+    },
     {
       id: 'cuti',
       title: 'Pengajuan Cuti/Izin',
@@ -61,7 +75,7 @@ export default function QuickActions({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {actions.map((item) => {
           const Icon = item.icon;
           return (

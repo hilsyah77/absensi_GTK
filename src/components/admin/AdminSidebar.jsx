@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Building2,
   LogOut,
-  X
+  X,
+  Sunrise
 } from 'lucide-react';
 
 export default function AdminSidebar({
@@ -29,6 +30,13 @@ export default function AdminSidebar({
       label: 'Dashboard Utama',
       icon: LayoutDashboard,
       badge: null
+    },
+    {
+      id: 'piket',
+      label: 'Jadwal Piket Guru',
+      sublabel: 'Piket Masuk Pagi',
+      icon: Sunrise,
+      badge: 'Pagi'
     },
     {
       id: 'pegawai',

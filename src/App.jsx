@@ -13,6 +13,8 @@ import LoginPage from './components/auth/LoginPage';
 import KamadDashboard from './components/kamad/KamadDashboard';
 import MonthlyReportModal from './components/admin/MonthlyReportModal';
 import InstallAppBanner from './components/InstallAppBanner';
+import DutyScheduleCard from './components/DutyScheduleCard';
+import DutyScheduleModal from './components/DutyScheduleModal';
 import { 
   saveAttendanceRecord, 
   subscribeAttendances, 
@@ -20,6 +22,9 @@ import {
   subscribeLeaveRequests,
   subscribeSystemConfig,
   getSystemConfig,
+  subscribeDutySchedule,
+  getDutySchedule,
+  isUserOnDutyToday,
   getAttendanceScheduleStatus,
   getTodayDateString
 } from './services/attendanceService';
@@ -97,6 +102,10 @@ export default function App() {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+  const [isDutyScheduleModalOpen, setIsDutyScheduleModalOpen] = useState(false);
+  
+  // Duty Schedule state
+  const [dutySchedule, setDutySchedule] = useState(() => getDutySchedule());
   
   // Center Attendance Success Modal state
   const [successModalData, setSuccessModalData] = useState({
@@ -154,10 +163,15 @@ export default function App() {
       if (cfg) setSystemConfig(cfg);
     });
 
+    const unsubDuty = subscribeDutySchedule((sched) => {
+      if (sched) setDutySchedule(sched);
+    });
+
     return () => {
       if (typeof unsubAttendance === 'function') unsubAttendance();
       if (typeof unsubLeaves === 'function') unsubLeaves();
       if (typeof unsubConfig === 'function') unsubConfig();
+      if (typeof unsubDuty === 'function') unsubDuty();
     };
   }, [userRole, currentUser]);
 
@@ -471,13 +485,24 @@ export default function App() {
           />
         </section>
 
+        {/* 3B. Jadwal Piket Guru Masuk Pagi (Hari Ini & Lengkap) */}
+        <section aria-label="Jadwal Piket Guru Masuk Pagi">
+          <DutyScheduleCard
+            dutySchedule={dutySchedule}
+            currentUser={currentUser}
+            onOpenFullSchedule={() => setIsDutyScheduleModalOpen(true)}
+          />
+        </section>
+
         {/* 4. Menu Aksi Cepat (Quick Actions Grid) */}
         <section aria-label="Menu Aksi Cepat">
           <QuickActions
             onOpenLeaveModal={() => setIsLeaveModalOpen(true)}
             onOpenHistory={() => setIsMonthlyReportOpen(true)}
             onOpenProfile={() => setIsProfileModalOpen(true)}
+            onOpenDutySchedule={() => setIsDutyScheduleModalOpen(true)}
             leaveCount={leaveRequests.length}
+            isOnDutyToday={isUserOnDutyToday(currentUser, dutySchedule).isOnDuty}
           />
         </section>
 
@@ -544,6 +569,14 @@ export default function App() {
         onExportSuccess={(fmt) => {
           showToast('Unduh Laporan Berhasil', `Laporan bulanan format .${fmt} telah tersimpan.`, 'success');
         }}
+      />
+
+      {/* Modal Jadwal Piket Lengkap */}
+      <DutyScheduleModal
+        isOpen={isDutyScheduleModalOpen}
+        onClose={() => setIsDutyScheduleModalOpen(false)}
+        dutySchedule={dutySchedule}
+        currentUser={currentUser}
       />
 
       {/* Pop-up Modal Sukses Presensi di Tengah Layar */}

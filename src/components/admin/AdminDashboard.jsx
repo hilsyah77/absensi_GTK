@@ -8,6 +8,7 @@ import AdminConfigSection from './AdminConfigSection';
 import AdminEmployeesView from './AdminEmployeesView';
 import AdminAccountSettings from './AdminAccountSettings';
 import AdminLeaveManagement from './AdminLeaveManagement';
+import AdminDutySchedule from './AdminDutySchedule';
 import AddEmployeeModal from './AddEmployeeModal';
 import UploadEmployeesModal from './UploadEmployeesModal';
 import ExportModal from './ExportModal';
@@ -316,6 +317,14 @@ export default function AdminDashboard({
                 }}
               />
             </div>
+          )}
+
+          {/* TAB: JADWAL PIKET GURU MASUK PAGI */}
+          {activeMenu === 'piket' && (
+            <AdminDutySchedule
+              employees={employees}
+              onShowToast={showToast}
+            />
           )}
 
           {/* TAB 4: REKAP IZIN & CUTI GURU / TENDIK */}

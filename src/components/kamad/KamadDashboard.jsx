@@ -26,9 +26,11 @@ import {
   AlertCircle,
   Trash2,
   RotateCcw,
-  Search
+  Search,
+  Sunrise
 } from 'lucide-react';
 import MonthlyReportModal from '../admin/MonthlyReportModal';
+import DutyScheduleModal from '../DutyScheduleModal';
 import { 
   subscribeAttendances, 
   subscribeLeaveRequests, 
@@ -36,13 +38,20 @@ import {
   updateLeaveStatus, 
   deleteLeaveRequest,
   DEFAULT_EMPLOYEES,
-  getTodayDateString
+  getTodayDateString,
+  subscribeDutySchedule,
+  getDutySchedule,
+  getTodayDutyTeachers,
+  getIndonesianDayName
 } from '../../services/attendanceService';
 
 export default function KamadDashboard({ 
   onLogout, 
   onShowToast 
 }) {
+  // Duty Schedule state
+  const [dutySchedule, setDutySchedule] = useState(() => getDutySchedule());
+  const [isDutyScheduleModalOpen, setIsDutyScheduleModalOpen] = useState(false);
   // Date filter state
   const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
   
@@ -75,10 +84,15 @@ export default function KamadDashboard({
       }
     });
 
+    const unsubDuty = subscribeDutySchedule((sched) => {
+      if (sched) setDutySchedule(sched);
+    });
+
     return () => {
       if (typeof unsubAttendance === 'function') unsubAttendance();
       if (typeof unsubLeaves === 'function') unsubLeaves();
       if (typeof unsubEmployees === 'function') unsubEmployees();
+      if (typeof unsubDuty === 'function') unsubDuty();
     };
   }, [selectedDate]);
 
@@ -312,6 +326,19 @@ export default function KamadDashboard({
                   className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-xs"
                 />
               </div>
+
+              {/* Duty Schedule Button */}
+              <button
+                type="button"
+                onClick={() => setIsDutyScheduleModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-950/80 hover:bg-slate-900 border border-amber-500/40 hover:border-amber-400 active:scale-95 text-amber-300 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                <Sunrise className="w-4 h-4 text-amber-400" />
+                <span>Jadwal Piket Guru</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  {getTodayDutyTeachers(dutySchedule).length} Hari Ini
+                </span>
+              </button>
 
               {/* Download Executive Report Button */}
               <button
@@ -1001,6 +1028,14 @@ export default function KamadDashboard({
             );
           }
         }}
+      />
+
+      {/* MODAL JADWAL PIKET GURU MASUK PAGI */}
+      <DutyScheduleModal
+        isOpen={isDutyScheduleModalOpen}
+        onClose={() => setIsDutyScheduleModalOpen(false)}
+        dutySchedule={dutySchedule}
+        currentUser={null}
       />
 
     </div>

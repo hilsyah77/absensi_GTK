@@ -20,7 +20,8 @@ const STORAGE_KEYS = {
   EMPLOYEES: 'presensi_gtk_employees_list',
   LEAVES: 'presensi_gtk_leave_requests',
   CONFIG: 'presensi_gtk_system_config',
-  SCHOOL_PROFILE: 'presensi_gtk_school_profile'
+  SCHOOL_PROFILE: 'presensi_gtk_school_profile',
+  DUTY_SCHEDULE: 'presensi_gtk_duty_schedule'
 };
 
 // ==========================================
@@ -847,6 +848,163 @@ export function subscribeSchoolProfile(onUpdate) {
   return () => {
     window.removeEventListener('school_profile_local_update', handleCustomUpdate);
     window.removeEventListener('storage', readLocal);
+  };
+}
+
+// ==========================================
+// 4C. JADWAL PIKET GURU MASUK PAGI
+// ==========================================
+
+export const DUTY_DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+export const DEFAULT_DUTY_SCHEDULE = {
+  dutyStartTime: '06:15',
+  dutyEndTime: '07:15',
+  defaultLocation: 'Pintu Gerbang & Lobi Utama',
+  sopNotes: 'Menyambut siswa & GTK dengan Senyum, Salam, Sapa (5S), menertibkan kerapian seragam, dan memantau siswa masuk pagi.',
+  schedule: {
+    Senin: [],
+    Selasa: [],
+    Rabu: [],
+    Kamis: [],
+    Jumat: [],
+    Sabtu: []
+  }
+};
+
+export function getDutySchedule() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = localStorage.getItem(STORAGE_KEYS.DUTY_SCHEDULE);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          ...DEFAULT_DUTY_SCHEDULE,
+          ...parsed,
+          schedule: {
+            ...DEFAULT_DUTY_SCHEDULE.schedule,
+            ...(parsed.schedule || {})
+          }
+        };
+      }
+    }
+  } catch {}
+  return DEFAULT_DUTY_SCHEDULE;
+}
+
+export async function saveDutySchedule(scheduleData) {
+  const current = getDutySchedule();
+  const merged = {
+    ...current,
+    ...scheduleData,
+    schedule: {
+      ...current.schedule,
+      ...(scheduleData.schedule || {})
+    },
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, 'system_config', 'duty_schedule');
+      await setDoc(docRef, merged, { merge: true });
+    } catch (err) {
+      console.error('[Firebase Error] Gagal simpan jadwal piket guru:', err);
+    }
+  }
+
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.DUTY_SCHEDULE, JSON.stringify(merged));
+      window.dispatchEvent(new CustomEvent('duty_schedule_local_update', { detail: merged }));
+    }
+    return { success: true, schedule: merged };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+export function subscribeDutySchedule(onUpdate) {
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, 'system_config', 'duty_schedule');
+    const unsub = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const merged = {
+          ...DEFAULT_DUTY_SCHEDULE,
+          ...data,
+          schedule: {
+            ...DEFAULT_DUTY_SCHEDULE.schedule,
+            ...(data.schedule || {})
+          }
+        };
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem(STORAGE_KEYS.DUTY_SCHEDULE, JSON.stringify(merged));
+          }
+        } catch {}
+        onUpdate(merged);
+      } else {
+        onUpdate(getDutySchedule());
+      }
+    }, (err) => {
+      console.warn('[Firebase] Gagal sinkron jadwal piket online, menggunakan lokal:', err);
+      onUpdate(getDutySchedule());
+    });
+    return unsub;
+  }
+
+  const readLocal = () => {
+    onUpdate(getDutySchedule());
+  };
+
+  readLocal();
+  const handleCustomUpdate = (e) => onUpdate(e.detail || getDutySchedule());
+  window.addEventListener('duty_schedule_local_update', handleCustomUpdate);
+  window.addEventListener('storage', readLocal);
+
+  return () => {
+    window.removeEventListener('duty_schedule_local_update', handleCustomUpdate);
+    window.removeEventListener('storage', readLocal);
+  };
+}
+
+/**
+ * Mengambil nama hari bahasa Indonesia (Senin..Minggu)
+ */
+export function getIndonesianDayName(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  return dayNames[d.getDay()];
+}
+
+/**
+ * Mengambil daftar guru piket hari ini berdasarkan jadwal
+ */
+export function getTodayDutyTeachers(dutyData, date = new Date()) {
+  if (!dutyData?.schedule) return [];
+  const dayName = getIndonesianDayName(date);
+  return dutyData.schedule[dayName] || [];
+}
+
+/**
+ * Cek apakah user yang sedang login terjadwal piket hari ini
+ */
+export function isUserOnDutyToday(user, dutyData, date = new Date()) {
+  if (!user) return { isOnDuty: false, dutyInfo: null };
+  const todayTeachers = getTodayDutyTeachers(dutyData, date);
+  const userNip = (user.nip || '').trim().toLowerCase();
+  const userName = (user.name || '').trim().toLowerCase();
+
+  const matched = todayTeachers.find(t => {
+    const tNip = (t.nip || '').trim().toLowerCase();
+    const tName = (t.name || '').trim().toLowerCase();
+    return (userNip && tNip && userNip === tNip) || (userName && tName && (userName.includes(tName) || tName.includes(userName)));
+  });
+
+  return {
+    isOnDuty: !!matched,
+    dutyInfo: matched || null
   };
 }
 
