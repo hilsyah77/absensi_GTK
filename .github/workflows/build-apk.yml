@@ -7,6 +7,9 @@ on:
       - main
       - master
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,8 +36,8 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Sync Capacitor Android
         run: npx cap sync android
@@ -45,10 +48,29 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK File
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Presensi-GTK.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Presensi-GTK-Debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Presensi-GTK-APK
+          path: Presensi-GTK.apk
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: apk-latest
+          name: "Presensi GTK APK (Latest Build)"
+          body: |
+            ### 📱 Download APK Presensi GTK Terbaru
+            File APK siap di-install di smartphone Android:
+            - **Nama File**: `Presensi-GTK.apk`
+            - **Commit**: ${{ github.sha }}
+            - **Tanggal Build**: ${{ github.event.head_commit.timestamp }}
+          files: Presensi-GTK.apk
+
