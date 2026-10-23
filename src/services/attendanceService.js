@@ -969,13 +969,19 @@ export function subscribeDutySchedule(onUpdate) {
   };
 }
 
-/**
- * Mengambil nama hari bahasa Indonesia (Senin..Minggu)
- */
 export function getIndonesianDayName(date = new Date()) {
   const d = date instanceof Date ? date : new Date(date);
-  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return dayNames[d.getDay()];
+  try {
+    const raw = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long'
+    }).format(d);
+    const normalized = raw.replace("'", '').trim();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+  } catch {
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return dayNames[d.getDay()];
+  }
 }
 
 /**

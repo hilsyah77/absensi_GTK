@@ -14,13 +14,15 @@ import {
   Calendar,
   X,
   Copy,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { 
   DUTY_DAYS, 
   getDutySchedule, 
   saveDutySchedule, 
   subscribeDutySchedule,
+  getIndonesianDayName,
   DEFAULT_DUTY_SCHEDULE 
 } from '../../services/attendanceService';
 
@@ -28,8 +30,18 @@ export default function AdminDutySchedule({
   employees = [],
   onShowToast
 }) {
-  const [dutySchedule, setDutySchedule] = useState(DEFAULT_DUTY_SCHEDULE);
-  const [activeDay, setActiveDay] = useState('Senin');
+  const [dutySchedule, setDutySchedule] = useState(() => getDutySchedule());
+  
+  // Day persistence: Remember last active day or default to today's day (e.g. Jumat)
+  const todayName = getIndonesianDayName();
+  const [activeDay, setActiveDay] = useState(() => {
+    try {
+      const saved = localStorage.getItem('presensi_admin_duty_active_day');
+      if (saved && DUTY_DAYS.includes(saved)) return saved;
+    } catch {}
+    return DUTY_DAYS.includes(todayName) ? todayName : 'Senin';
+  });
+
   const [isSaving, setIsSaving] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -47,7 +59,15 @@ export default function AdminDutySchedule({
   const teacherList = employees.filter(e => (e.role || '').toLowerCase() === 'guru' || !e.role);
   const employeePool = teacherList.length > 0 ? teacherList : employees;
 
-  // Subscribe to realtime duty schedule
+  // Handle switching active day with localStorage remember
+  const handleSelectDay = (day) => {
+    setActiveDay(day);
+    try {
+      localStorage.setItem('presensi_admin_duty_active_day', day);
+    } catch {}
+  };
+
+  // Subscribe to realtime duty schedule from Firebase & LocalStorage
   useEffect(() => {
     const unsub = subscribeDutySchedule((data) => {
       if (data) {
@@ -101,8 +121,8 @@ export default function AdminDutySchedule({
     }
   };
 
-  // Submit adding teacher to activeDay
-  const handleAddTeacherSubmit = (e) => {
+  // Submit adding teacher to activeDay -> IMMEDIATELY AUTO-SAVES TO DB & LOCALSTORAGE
+  const handleAddTeacherSubmit = async (e) => {
     e.preventDefault();
     if (!formTeacher.name.trim()) {
       if (onShowToast) onShowToast('Perhatian', 'Nama guru petugas piket wajib diisi.', 'warning');
@@ -118,50 +138,71 @@ export default function AdminDutySchedule({
       phone: formTeacher.phone.trim()
     };
 
-    setDutySchedule(prev => {
-      const currentList = prev.schedule?.[activeDay] || [];
-      return {
-        ...prev,
-        schedule: {
-          ...prev.schedule,
-          [activeDay]: [...currentList, newAssignment]
-        }
-      };
-    });
+    const currentList = dutySchedule.schedule?.[activeDay] || [];
+    const updatedSchedule = {
+      ...dutySchedule,
+      schedule: {
+        ...dutySchedule.schedule,
+        [activeDay]: [...currentList, newAssignment]
+      }
+    };
 
+    // 1. Update state segera
+    setDutySchedule(updatedSchedule);
     setIsAddModalOpen(false);
-    if (onShowToast) {
-      onShowToast('Ditambahkan', `${newAssignment.name} ditambahkan ke jadwal piket hari ${activeDay}. Jangan lupa klik "Simpan Jadwal".`, 'info');
-    }
-  };
 
-  // Remove teacher from activeDay
-  const handleRemoveTeacher = (dutyId, teacherName) => {
-    if (window.confirm(`Hapus ${teacherName} dari jadwal piket hari ${activeDay}?`)) {
-      setDutySchedule(prev => {
-        const currentList = prev.schedule?.[activeDay] || [];
-        return {
-          ...prev,
-          schedule: {
-            ...prev.schedule,
-            [activeDay]: currentList.filter(t => t.id !== dutyId)
-          }
-        };
-      });
+    // 2. Simpan otomatis permanen ke Cloud Firestore & LocalStorage
+    setIsSaving(true);
+    const res = await saveDutySchedule(updatedSchedule);
+    setIsSaving(false);
+
+    if (res.success) {
       if (onShowToast) {
-        onShowToast('Dihapus', `${teacherName} telah dihapus dari daftar piket hari ${activeDay}.`, 'info');
+        onShowToast('Tersimpan Otomatis', `${newAssignment.name} berhasil ditambahkan dan disimpan ke jadwal piket hari ${activeDay}.`, 'success');
+      }
+    } else {
+      if (onShowToast) {
+        onShowToast('Gagal Menyimpan', res.error || 'Terjadi kesalahan saat menyimpan.', 'error');
       }
     }
   };
 
-  // Save all changes to database & localStorage
+  // Remove teacher from activeDay -> IMMEDIATELY AUTO-SAVES TO DB & LOCALSTORAGE
+  const handleRemoveTeacher = async (dutyId, teacherName) => {
+    if (window.confirm(`Hapus ${teacherName} dari jadwal piket hari ${activeDay}?`)) {
+      const currentList = dutySchedule.schedule?.[activeDay] || [];
+      const updatedSchedule = {
+        ...dutySchedule,
+        schedule: {
+          ...dutySchedule.schedule,
+          [activeDay]: currentList.filter(t => t.id !== dutyId)
+        }
+      };
+
+      // 1. Update state segera
+      setDutySchedule(updatedSchedule);
+
+      // 2. Simpan otomatis permanen ke Cloud Firestore & LocalStorage
+      setIsSaving(true);
+      const res = await saveDutySchedule(updatedSchedule);
+      setIsSaving(false);
+
+      if (res.success) {
+        if (onShowToast) {
+          onShowToast('Berhasil Dihapus', `${teacherName} telah dihapus dari jadwal piket hari ${activeDay}.`, 'info');
+        }
+      }
+    }
+  };
+
+  // Save all changes (Manual trigger button)
   const handleSaveAll = async () => {
     setIsSaving(true);
     const res = await saveDutySchedule(dutySchedule);
     setIsSaving(false);
     if (res.success) {
       if (onShowToast) {
-        onShowToast('Berhasil Disimpan', 'Jadwal piket guru masuk pagi berhasil disinkronkan ke seluruh sistem!', 'success');
+        onShowToast('Berhasil Disimpan', 'Jadwal piket guru masuk pagi berhasil disinkronkan ke cloud & perangkat!', 'success');
       }
     } else {
       if (onShowToast) {
@@ -190,13 +231,18 @@ export default function AdminDutySchedule({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Atur petugas piket penyambutan siswa 5S dan pengawasan gerbang pagi madrasah
+              Atur petugas piket penyambutan siswa 5S dan pengawasan gerbang pagi madrasah (Auto-Save Aktif)
             </p>
           </div>
         </div>
 
-        {/* Action Button */}
+        {/* Action Button & Status */}
         <div className="flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200/70 px-3 py-2 rounded-xl">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>Tersimpan Otomatis ke Cloud</span>
+          </div>
+
           <button
             type="button"
             onClick={handleSaveAll}
@@ -204,17 +250,22 @@ export default function AdminDutySchedule({
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-600/20 transition-all cursor-pointer disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Semua Perubahan'}</span>
+            <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
           </button>
         </div>
       </div>
 
       {/* Global Configuration Card */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-4">
-        <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-amber-600" />
-          <span>Pengaturan Waktu & Lokasi Piket Pagi</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <span>Pengaturan Waktu & Lokasi Piket Pagi</span>
+          </h3>
+          <span className="text-[11px] text-slate-400">
+            Klik tombol simpan setelah mengubah jam atau SOP
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -281,7 +332,7 @@ export default function AdminDutySchedule({
               Pilih Hari Kerja (Senin - Sabtu):
             </label>
             <span className="text-[11px] text-slate-400">
-              Total 6 Hari Kerja Aktif
+              Hari ini: <strong className="text-amber-700">{todayName}</strong>
             </span>
           </div>
 
@@ -289,20 +340,36 @@ export default function AdminDutySchedule({
             {DUTY_DAYS.map((day) => {
               const count = (dutySchedule.schedule?.[day] || []).length;
               const isActive = activeDay === day;
+              const isToday = todayName === day;
 
               return (
                 <button
                   key={day}
                   type="button"
-                  onClick={() => setActiveDay(day)}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                  onClick={() => handleSelectDay(day)}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer relative ${
                     isActive
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20 font-bold'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/25 font-bold scale-[1.02]'
                       : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                   }`}
                 >
+                  {isToday && (
+                    <span className={`absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                      isActive 
+                        ? 'bg-white/25 text-white border border-white/30' 
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    }`}>
+                      Hari Ini
+                    </span>
+                  )}
                   <div className="text-xs sm:text-sm">{day}</div>
-                  <div className={`text-[10px] mt-0.5 font-medium ${isActive ? 'text-amber-100' : 'text-slate-400'}`}>
+                  <div className={`text-[10px] mt-0.5 font-bold ${
+                    isActive 
+                      ? 'text-amber-100' 
+                      : count > 0 
+                        ? 'text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded-md inline-block' 
+                        : 'text-slate-400'
+                  }`}>
                     {count} Guru Piket
                   </div>
                 </button>
@@ -316,22 +383,31 @@ export default function AdminDutySchedule({
           <div>
             <h4 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
               <span>Daftar Guru Piket Hari {activeDay}</span>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                activeDayTeachers.length > 0 
+                  ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                  : 'bg-slate-100 text-slate-700 border-slate-200'
+              }`}>
                 {activeDayTeachers.length} Guru Terdaftar
               </span>
+              {todayName === activeDay && (
+                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full">
+                  Piket Hari Ini
+                </span>
+              )}
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              Guru yang tercatat akan menerima notifikasi piket di beranda akun masing-masing pada hari {activeDay}.
+              Setiap nama yang ditambahkan akan otomatis tersimpan langsung ke database cloud & perangkat.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleOpenAddModal}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-amber-400" />
-            <span>Tambah Guru Piket {activeDay}</span>
+            <span>+ Tambah Guru Piket Hari {activeDay}</span>
           </button>
         </div>
 
@@ -351,7 +427,7 @@ export default function AdminDutySchedule({
                     <button
                       type="button"
                       onClick={() => handleRemoveTeacher(teacher.id, teacher.name)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       title="Hapus dari jadwal"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -387,7 +463,7 @@ export default function AdminDutySchedule({
             <Sunrise className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="font-semibold text-slate-700">Belum ada guru yang ditugaskan piket untuk hari {activeDay}</p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Klik tombol "Tambah Guru Piket {activeDay}" di atas untuk menugaskan guru.
+              Klik tombol "+ Tambah Guru Piket Hari {activeDay}" di atas untuk menugaskan guru.
             </p>
           </div>
         )}
@@ -406,13 +482,13 @@ export default function AdminDutySchedule({
                   Tambah Guru Piket Hari {activeDay}
                 </h3>
                 <p className="text-[11px] text-amber-100 mt-0.5">
-                  Tugaskan guru untuk masuk piket pagi
+                  Tugaskan guru untuk masuk piket pagi (Tersimpan Otomatis)
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -505,15 +581,16 @@ export default function AdminDutySchedule({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Tambahkan ke Hari {activeDay}
+                  {isSaving ? 'Menyimpan...' : `Tambahkan & Simpan ke Hari ${activeDay}`}
                 </button>
               </div>
             </form>

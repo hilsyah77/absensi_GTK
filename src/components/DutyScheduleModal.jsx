@@ -32,6 +32,15 @@ export default function DutyScheduleModal({
   );
   const [searchQuery, setSearchQuery] = useState('');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      const today = getIndonesianDayName();
+      if (DUTY_DAYS.includes(today)) {
+        setSelectedDay(today);
+      }
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const currentSchedule = dutySchedule || DEFAULT_DUTY_SCHEDULE;
