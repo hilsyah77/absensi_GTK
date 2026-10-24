@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   UploadCloud,
   Trash2,
+  Printer,
   ArrowUpDown,
   ArrowDownAZ,
   ArrowUpZA
