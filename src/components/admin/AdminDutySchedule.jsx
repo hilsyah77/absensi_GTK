@@ -55,9 +55,12 @@ export default function AdminDutySchedule({
     phone: ''
   });
 
-  // Filter only teachers / GTK (or all employees)
+  // Filter only teachers / GTK (or all employees) and sort A-Z
   const teacherList = employees.filter(e => (e.role || '').toLowerCase() === 'guru' || !e.role);
-  const employeePool = teacherList.length > 0 ? teacherList : employees;
+  const basePool = teacherList.length > 0 ? teacherList : employees;
+  const employeePool = [...basePool].sort((a, b) => 
+    (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' })
+  );
 
   // Handle switching active day with localStorage remember
   const handleSelectDay = (day) => {
@@ -143,7 +146,9 @@ export default function AdminDutySchedule({
       ...dutySchedule,
       schedule: {
         ...dutySchedule.schedule,
-        [activeDay]: [...currentList, newAssignment]
+        [activeDay]: [...currentList, newAssignment].sort((a, b) => 
+          (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' })
+        )
       }
     };
 
@@ -211,7 +216,9 @@ export default function AdminDutySchedule({
     }
   };
 
-  const activeDayTeachers = dutySchedule.schedule?.[activeDay] || [];
+  const activeDayTeachers = [...(dutySchedule.schedule?.[activeDay] || [])].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' })
+  );
 
   return (
     <div className="space-y-6">
