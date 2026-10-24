@@ -218,7 +218,7 @@ export default function AdminDutySchedule({
       {/* Top Header Card */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-100">
+          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-100">
             <Sunrise className="w-6 h-6" />
           </div>
           <div>

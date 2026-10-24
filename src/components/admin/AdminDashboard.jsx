@@ -13,6 +13,7 @@ import AddEmployeeModal from './AddEmployeeModal';
 import UploadEmployeesModal from './UploadEmployeesModal';
 import ExportModal from './ExportModal';
 import Toast from '../Toast';
+import { APP_VERSION, APP_BUILD_NAME } from '../../config/version';
 import { 
   subscribeAttendances, 
   subscribeEmployees, 
@@ -216,7 +217,7 @@ export default function AdminDashboard({
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-7">
           
           {/* Institution Welcome Banner */}
-          <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-sky-950 to-blue-950 text-white rounded-3xl p-5 sm:p-6 shadow-md border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative overflow-hidden bg-linear-to-r from-slate-900 via-sky-950 to-blue-950 text-white rounded-3xl p-5 sm:p-6 shadow-md border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative z-10 space-y-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-[11px] font-semibold border border-sky-400/30">
                 <Sparkles className="w-3.5 h-3.5" />
@@ -356,8 +357,12 @@ export default function AdminDashboard({
               <span className="font-semibold text-slate-700">SIM GTK Admin Portal</span>
               <span>— Panel Pengawasan Kepegawaian Terpusat</span>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Sistem Presensi Geofencing Terverifikasi • Standar BKN & Kemendikbudristek
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 justify-center sm:justify-end">
+              <span className="font-semibold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200/80">
+                Versi {APP_VERSION} ({APP_BUILD_NAME})
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span>Sistem Presensi Geofencing Terverifikasi • Standar BKN & Kemendikbudristek</span>
             </div>
           </div>
         </footer>

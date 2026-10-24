@@ -18,6 +18,7 @@ import {
   Award
 } from 'lucide-react';
 import { authenticateEmployee } from '../../services/attendanceService';
+import { APP_VERSION, APP_BUILD_NAME } from '../../config/version';
 
 export default function LoginPage({ onLoginSuccess, onShowToast }) {
   // 'gtk' | 'admin' | 'kamad'
@@ -476,8 +477,12 @@ export default function LoginPage({ onLoginSuccess, onShowToast }) {
             <span className="font-semibold text-slate-800">SIM GTK Terpadu</span>
             <span className="text-slate-500">— Standar Regulasi Kepegawaian Sekolah/Madrasah</span>
           </div>
-          <div className="text-[11px] text-slate-500 font-medium">
-            Enkripsi SHA-256 Terlindungi • Kemendikbudristek & Kemenag
+          <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-slate-500 font-medium justify-center sm:justify-end">
+            <span className="font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200/80">
+              Versi {APP_VERSION} ({APP_BUILD_NAME})
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span>Enkripsi SHA-256 Terlindungi • Kemendikbudristek & Kemenag</span>
           </div>
         </div>
       </footer>

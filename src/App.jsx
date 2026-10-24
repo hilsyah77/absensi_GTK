@@ -15,6 +15,7 @@ import MonthlyReportModal from './components/admin/MonthlyReportModal';
 import InstallAppBanner from './components/InstallAppBanner';
 import DutyScheduleCard from './components/DutyScheduleCard';
 import DutyScheduleModal from './components/DutyScheduleModal';
+import { APP_VERSION, APP_BUILD_NAME } from './config/version';
 import { 
   saveAttendanceRecord, 
   subscribeAttendances, 
@@ -558,8 +559,10 @@ export default function App() {
             <span className="text-slate-400">— Sistem Presensi Digital Geofencing Mandiri</span>
           </div>
           
-          <div className="flex items-center gap-4 text-slate-400">
-            <span>Versi 2.4.0 (Biru Langit Edition)</span>
+          <div className="flex items-center gap-3 text-slate-400">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold border border-sky-200/80">
+              Versi {APP_VERSION} ({APP_BUILD_NAME})
+            </span>
             <span>•</span>
             <button
               type="button"

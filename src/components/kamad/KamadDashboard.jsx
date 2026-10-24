@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import MonthlyReportModal from '../admin/MonthlyReportModal';
 import DutyScheduleModal from '../DutyScheduleModal';
+import { APP_VERSION, APP_BUILD_NAME } from '../../config/version';
 import { 
   subscribeAttendances, 
   subscribeLeaveRequests, 
@@ -877,8 +878,12 @@ export default function KamadDashboard({
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span className="font-semibold text-slate-300">SIM GTK MTs Asy-Syafi'iyyah Jatibarang — Executive Oversight Portal</span>
           </div>
-          <div className="text-[11px] text-slate-500">
-            Khusus Hak Akses Kepala Madrasah • Terenkripsi SHA-256
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 justify-center sm:justify-end">
+            <span className="font-semibold text-emerald-400 bg-emerald-950/70 px-2.5 py-0.5 rounded-full border border-emerald-800/70">
+              Versi {APP_VERSION} ({APP_BUILD_NAME})
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span>Khusus Hak Akses Kepala Madrasah • Terenkripsi SHA-256</span>
           </div>
         </div>
       </footer>
