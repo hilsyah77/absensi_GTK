@@ -695,11 +695,13 @@ export default function AdminLeaveManagement({
                   required
                 >
                   <option value="">-- Pilih Guru atau Tendik --</option>
-                  {employees.map(emp => (
-                    <option key={emp.id || emp.nip} value={emp.nip || emp.id}>
-                      {emp.name} ({emp.nip}) - {emp.role === 'tendik' ? 'Tendik' : 'Guru'}
-                    </option>
-                  ))}
+                  {[...employees]
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' }))
+                    .map(emp => (
+                      <option key={emp.id || emp.nip} value={emp.nip || emp.id}>
+                        {emp.name} ({emp.nip}) - {emp.role === 'tendik' ? 'Tendik' : 'Guru'}
+                      </option>
+                    ))}
                 </select>
               </div>
 

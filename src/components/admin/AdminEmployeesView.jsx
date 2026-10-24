@@ -14,7 +14,9 @@ import {
   FileSpreadsheet,
   UploadCloud,
   Trash2,
-  Printer
+  ArrowUpDown,
+  ArrowDownAZ,
+  ArrowUpZA
 } from 'lucide-react';
 
 export default function AdminEmployeesView({
@@ -28,16 +30,48 @@ export default function AdminEmployeesView({
   roleFilter,
   setRoleFilter
 }) {
-  const filtered = employees.filter(emp => {
-    const matchesSearch = !searchQuery || 
-      emp.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.nip?.includes(searchQuery) ||
-      emp.position?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
+  const [sortField, setSortField] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = A-Z, 'desc' = Z-A
 
-    return matchesSearch && matchesRole;
-  });
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const filtered = employees
+    .filter(emp => {
+      const matchesSearch = !searchQuery || 
+        emp.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.nip?.includes(searchQuery) ||
+        emp.position?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
+
+      return matchesSearch && matchesRole;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'name') {
+        const nameA = (a.name || '').trim();
+        const nameB = (b.name || '').trim();
+        comparison = nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
+      } else if (sortField === 'nip') {
+        comparison = (a.nip || '').localeCompare(b.nip || '');
+      } else if (sortField === 'role') {
+        comparison = (a.role || '').localeCompare(b.role || '');
+      } else if (sortField === 'position') {
+        comparison = (a.position || '').localeCompare(b.position || '');
+      } else if (sortField === 'status') {
+        const statusA = a.employmentStatus || 'Aktif';
+        const statusB = b.employmentStatus || 'Aktif';
+        comparison = statusA.localeCompare(statusB);
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   return (
     <div className="space-y-6">
@@ -91,26 +125,48 @@ export default function AdminEmployeesView({
           />
         </div>
 
-        {/* Role Segmented */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium text-slate-600 w-full md:w-auto">
-          {[
-            { id: 'all', label: 'Semua GTK' },
-            { id: 'guru', label: 'Guru (Pendidik)' },
-            { id: 'tendik', label: 'Tenaga Kependidikan' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setRoleFilter(tab.id)}
-              className={`flex-1 md:flex-initial px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                roleFilter === tab.id
-                  ? 'bg-white text-sky-700 font-semibold shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Role Segmented & Sort Control */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+          {/* Role Segmented */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium text-slate-600 w-full sm:w-auto">
+            {[
+              { id: 'all', label: 'Semua GTK' },
+              { id: 'guru', label: 'Guru (Pendidik)' },
+              { id: 'tendik', label: 'Tenaga Kependidikan' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setRoleFilter(tab.id)}
+                className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                  roleFilter === tab.id
+                    ? 'bg-white text-sky-700 font-semibold shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Sort Toggle Button */}
+          <button
+            type="button"
+            onClick={() => handleSort('name')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-2xs transition-all cursor-pointer ${
+              sortField === 'name'
+                ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
+                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+            }`}
+            title={sortOrder === 'asc' ? 'Urutan: Nama A-Z (Klik untuk ubah ke Z-A)' : 'Urutan: Nama Z-A (Klik untuk ubah ke A-Z)'}
+          >
+            {sortOrder === 'asc' ? (
+              <ArrowDownAZ className="w-4 h-4 text-sky-600" />
+            ) : (
+              <ArrowUpZA className="w-4 h-4 text-sky-600" />
+            )}
+            <span>Sortir: {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
+          </button>
         </div>
       </div>
 
@@ -154,11 +210,74 @@ export default function AdminEmployeesView({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">NIP / ID</th>
-                  <th className="py-3.5 px-4">Nama Lengkap</th>
-                  <th className="py-3.5 px-4">Kategori</th>
-                  <th className="py-3.5 px-4">Jabatan / Mapel</th>
-                  <th className="py-3.5 px-4">Status</th>
+                  <th 
+                    className="py-3.5 px-6 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    onClick={() => handleSort('nip')}
+                    title="Klik untuk mengurutkan NIP"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>NIP / ID</span>
+                      {sortField === 'nip' ? (
+                        <span className="text-sky-600 font-bold">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                    onClick={() => handleSort('name')}
+                    title="Klik untuk mengurutkan Nama A-Z / Z-A"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={sortField === 'name' ? 'text-sky-700 font-extrabold' : ''}>Nama Lengkap</span>
+                      {sortField === 'name' ? (
+                        sortOrder === 'asc' ? (
+                          <ArrowDownAZ className="w-4 h-4 text-sky-600" />
+                        ) : (
+                          <ArrowUpZA className="w-4 h-4 text-sky-600" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-300 group-hover:text-slate-500" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    onClick={() => handleSort('role')}
+                    title="Klik untuk mengurutkan Kategori"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Kategori</span>
+                      {sortField === 'role' && (
+                        <span className="text-sky-600 font-bold">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    onClick={() => handleSort('position')}
+                    title="Klik untuk mengurutkan Jabatan"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Jabatan / Mapel</span>
+                      {sortField === 'position' && (
+                        <span className="text-sky-600 font-bold">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    onClick={() => handleSort('status')}
+                    title="Klik untuk mengurutkan Status"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      {sortField === 'status' && (
+                        <span className="text-sky-600 font-bold">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3.5 px-6 text-right">Aksi</th>
                 </tr>
               </thead>
