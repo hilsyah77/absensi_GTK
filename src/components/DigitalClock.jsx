@@ -1,15 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Timer } from 'lucide-react';
+import { 
+  getSystemConfig, 
+  subscribeSystemConfig, 
+  getTodayDateString 
+} from '../services/attendanceService';
 
-export default function DigitalClock() {
+export default function DigitalClock({ systemConfig: propConfig }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [config, setConfig] = useState(() => propConfig || getSystemConfig());
 
+  // Real-time tick setiap detik
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Update jika propConfig berubah dari parent
+  useEffect(() => {
+    if (propConfig) {
+      setConfig(propConfig);
+    }
+  }, [propConfig]);
+
+  // Sinkronisasi realtime konfigurasi dari server database / localStorage
+  useEffect(() => {
+    const unsub = subscribeSystemConfig((newCfg) => {
+      if (newCfg) {
+        setConfig(newCfg);
+      }
+    });
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
   }, []);
 
   // Format hours, minutes, seconds with zero-padding
@@ -25,6 +52,55 @@ export default function DigitalClock() {
     year: 'numeric'
   };
   const formattedDate = currentTime.toLocaleDateString('id-ID', dateOptions);
+
+  // Evaluasi jadwal dinamis per hari (Senin s/d Minggu)
+  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const dayOfWeek = currentTime.getDay(); // 0: Minggu, 1: Senin, ..., 5: Jumat, 6: Sabtu
+  const currentDayName = dayNames[dayOfWeek];
+
+  const todayStr = getTodayDateString(currentTime);
+  const activeDays = config?.activeDays || ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const isWorkDay = activeDays.includes(currentDayName);
+
+  // Cek kalender hari libur
+  const holidayMatch = (config?.holidays || []).find((h) => {
+    return (h.disableAttendance ?? true) && todayStr >= h.startDate && todayStr <= h.endDate;
+  });
+  const isHoliday = !isWorkDay || Boolean(holidayMatch);
+
+  // Jam Masuk & Batas Toleransi dari pengaturan admin
+  const checkInTime = config?.checkInTime || '07:00';
+  const lateTolerance = config?.lateTolerance || config?.checkInEndTime || '07:15';
+
+  // Jam Pulang & Label Dinamis per hari
+  let checkOutTime = config?.checkOutTime || '15:30';
+  let badgeLabel = 'Senin - Kamis';
+  let checkoutSubtext = 'Reguler (Senin - Kamis)';
+  let badgeClass = 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40';
+
+  if (isHoliday) {
+    badgeLabel = 'Hari Libur';
+    checkoutSubtext = holidayMatch ? (holidayMatch.name || 'Libur Kalender') : `Libur (${currentDayName})`;
+    badgeClass = 'bg-rose-500/25 text-rose-200 border-rose-400/40';
+  } else if (dayOfWeek === 5) {
+    // Hari Jumat
+    checkOutTime = config?.fridayCheckOutTime || '11:30';
+    badgeLabel = 'Khusus Jumat';
+    checkoutSubtext = 'Khusus Hari Jumat';
+    badgeClass = 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40';
+  } else if (dayOfWeek === 6) {
+    // Hari Sabtu
+    checkOutTime = config?.saturdayCheckOutTime || '13:00';
+    badgeLabel = 'Khusus Sabtu';
+    checkoutSubtext = 'Khusus Hari Sabtu';
+    badgeClass = 'bg-indigo-500/25 text-indigo-200 border-indigo-400/40';
+  } else {
+    // Senin s/d Kamis
+    checkOutTime = config?.checkOutTime || '15:30';
+    badgeLabel = 'Senin - Kamis';
+    checkoutSubtext = 'Reguler (Senin - Kamis)';
+    badgeClass = 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40';
+  }
 
   return (
     <div 
@@ -86,28 +162,36 @@ export default function DigitalClock() {
           </div>
         </div>
 
-        {/* Right: Shift & Tolerance Schedule Card (Glassmorphic) */}
+        {/* Right: Shift & Tolerance Schedule Card (Glassmorphic) - Dinamis Sesuai Admin Per Hari */}
         <div className="bg-[#0b1038]/70 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-cyan-400/30 shadow-xl flex flex-col justify-center min-w-[260px]">
-          <div className="flex items-center justify-between text-xs text-cyan-200 pb-2.5 border-b border-cyan-400/20">
-            <span className="font-semibold uppercase tracking-wider flex items-center gap-1.5 text-white">
-              <Timer className="w-3.5 h-3.5 text-cyan-300" />
-              Jadwal Shift Reguler
+          <div className="flex items-center justify-between text-xs text-cyan-200 pb-2.5 border-b border-cyan-400/20 gap-2">
+            <span className="font-semibold uppercase tracking-wider flex items-center gap-1.5 text-white truncate">
+              <Timer className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+              <span>Jadwal Shift: {currentDayName}</span>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-cyan-500/25 text-cyan-200 text-[10px] font-semibold border border-cyan-400/40">
-              Senin - Jumat
+            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${badgeClass}`}>
+              {badgeLabel}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3.5 mt-3">
             <div>
               <p className="text-[11px] text-cyan-100/70 uppercase font-medium">Jam Masuk</p>
-              <p className="text-sm sm:text-base font-bold text-white font-digital mt-0.5">06:45 WIB</p>
-              <p className="text-[10px] text-emerald-300 mt-0.5 font-medium">Toleransi s/d 07:15</p>
+              <p className="text-sm sm:text-base font-bold text-white font-digital mt-0.5">
+                {checkInTime} WIB
+              </p>
+              <p className="text-[10px] text-emerald-300 mt-0.5 font-medium truncate" title={`Toleransi s/d ${lateTolerance}`}>
+                Toleransi s/d {lateTolerance}
+              </p>
             </div>
             <div>
               <p className="text-[11px] text-cyan-100/70 uppercase font-medium">Jam Pulang</p>
-              <p className="text-sm sm:text-base font-bold text-white font-digital mt-0.5">15:30 WIB</p>
-              <p className="text-[10px] text-cyan-200 mt-0.5">Minimal 8 Jam Kerja</p>
+              <p className="text-sm sm:text-base font-bold text-white font-digital mt-0.5">
+                {checkOutTime} WIB
+              </p>
+              <p className="text-[10px] text-cyan-200 mt-0.5 truncate" title={checkoutSubtext}>
+                {checkoutSubtext}
+              </p>
             </div>
           </div>
         </div>

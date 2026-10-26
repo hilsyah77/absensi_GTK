@@ -489,7 +489,7 @@ export default function App() {
 
         {/* 2. Jam & Tanggal Digital Real-Time (Card Jam Biru Langit) */}
         <section aria-label="Jam dan Tanggal Digital">
-          <DigitalClock />
+          <DigitalClock systemConfig={systemConfig} />
         </section>
 
         {/* 3. Card Presensi Utama (Call to Action - Opsi 1: Satu Tombol Cerdas Terpadu) */}
