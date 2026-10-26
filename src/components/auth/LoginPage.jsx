@@ -17,7 +17,7 @@ import {
   ExternalLink,
   Award
 } from 'lucide-react';
-import { authenticateEmployee } from '../../services/attendanceService';
+import { authenticateEmployee, getSchoolProfile } from '../../services/attendanceService';
 import { APP_VERSION, APP_BUILD_NAME } from '../../config/version';
 
 export default function LoginPage({ onLoginSuccess, onShowToast }) {
@@ -134,10 +134,11 @@ export default function LoginPage({ onLoginSuccess, onShowToast }) {
       setIsLoading(true);
       setTimeout(() => {
         setIsLoading(false);
+        const profile = getSchoolProfile();
         onLoginSuccess({
           role: 'kamad',
-          userName: 'Drs. H. Akhmad Rosidi',
-          nip: 'kamad'
+          userName: profile?.headmasterName || 'Drs. H. Akhmad Rosidi',
+          nip: profile?.headmasterNip && profile.headmasterNip !== '-' ? profile.headmasterNip : 'kamad'
         });
       }, 400);
     }

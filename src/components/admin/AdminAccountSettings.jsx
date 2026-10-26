@@ -274,15 +274,16 @@ export default function AdminAccountSettings({ onShowToast }) {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>NIP Kepala Madrasah (Opsional)</span>
+                  <span>NIP Kepala Madrasah</span>
                 </label>
                 <input
                   type="text"
                   value={profileData.headmasterNip || ''}
                   onChange={(e) => setProfileData({ ...profileData, headmasterNip: e.target.value })}
-                  placeholder="Ketik NIP jika ada, atau '-' jika non-PNS"
+                  placeholder="Ketik NIP (contoh: 196805121994031002 atau '-' jika non-PNS)"
                   className="w-full px-3.5 py-2 text-xs font-mono bg-slate-50 focus:bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none transition-all text-slate-800"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Dicantumkan pada baris NIP lembar pengesahan dan cetak laporan resmi</p>
               </div>
 
               {/* 5. Alamat Lengkap */}
@@ -336,9 +337,11 @@ export default function AdminAccountSettings({ onShowToast }) {
               <p className="text-[9.5px] text-slate-500 italic">
                 {profileData.alamat || 'Jl. Mayor Dasuki No. 136 Jatibarang, Kab. Indramayu - Jawa Barat 45273'}
               </p>
-              <div className="pt-2 mt-2 border-t border-dashed border-slate-200 flex items-center justify-between text-[10px] text-slate-600 px-2">
+              <div className="pt-2 mt-2 border-t border-dashed border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[10px] text-slate-600 px-2 gap-1">
                 <span>Penanggung Jawab:</span>
-                <span className="font-bold text-slate-900">Kepala Madrasah: {profileData.headmasterName || 'Drs. H. Akhmad Rosidi'}</span>
+                <span className="font-bold text-slate-900">
+                  Kepala Madrasah: {profileData.headmasterName || 'Drs. H. Akhmad Rosidi'} • {profileData.headmasterNip && profileData.headmasterNip !== '-' ? (profileData.headmasterNip.toUpperCase().startsWith('NIP') ? profileData.headmasterNip : `NIP. ${profileData.headmasterNip}`) : 'NIP. -'}
+                </span>
               </div>
             </div>
           </div>

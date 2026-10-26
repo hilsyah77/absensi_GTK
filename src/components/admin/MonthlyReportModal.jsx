@@ -1042,7 +1042,11 @@ export default function MonthlyReportModal({
                         {schoolProfile?.headmasterName || "Drs. H. AKHMAD ROSIDI"}
                       </p>
                       <p className="font-mono text-[10.5px] text-black font-semibold mt-0.5">
-                        {schoolProfile?.headmasterNip && schoolProfile.headmasterNip !== '-' ? `NIP. ${schoolProfile.headmasterNip}` : `Kepala ${schoolProfile?.schoolName || "MTs Asy-Syafi'iyyah"}`}
+                        {(() => {
+                          const rawNip = (schoolProfile?.headmasterNip || '').trim();
+                          if (!rawNip || rawNip === '-') return 'NIP. -';
+                          return rawNip.toUpperCase().startsWith('NIP') ? rawNip : `NIP. ${rawNip}`;
+                        })()}
                       </p>
                     </div>
 

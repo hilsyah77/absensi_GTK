@@ -43,13 +43,18 @@ import {
   subscribeDutySchedule,
   getDutySchedule,
   getTodayDutyTeachers,
-  getIndonesianDayName
+  getIndonesianDayName,
+  getSchoolProfile,
+  subscribeSchoolProfile
 } from '../../services/attendanceService';
 
 export default function KamadDashboard({ 
   onLogout, 
   onShowToast 
 }) {
+  // Profil & Identitas Madrasah (termasuk Nama & NIP Kamad dari Admin)
+  const [schoolProfile, setSchoolProfile] = useState(() => getSchoolProfile());
+
   // Duty Schedule state
   const [dutySchedule, setDutySchedule] = useState(() => getDutySchedule());
   const [isDutyScheduleModalOpen, setIsDutyScheduleModalOpen] = useState(false);
@@ -89,11 +94,16 @@ export default function KamadDashboard({
       if (sched) setDutySchedule(sched);
     });
 
+    const unsubProfile = subscribeSchoolProfile((profile) => {
+      if (profile) setSchoolProfile(profile);
+    });
+
     return () => {
       if (typeof unsubAttendance === 'function') unsubAttendance();
       if (typeof unsubLeaves === 'function') unsubLeaves();
       if (typeof unsubEmployees === 'function') unsubEmployees();
       if (typeof unsubDuty === 'function') unsubDuty();
+      if (typeof unsubProfile === 'function') unsubProfile();
     };
   }, [selectedDate]);
 
@@ -109,15 +119,17 @@ export default function KamadDashboard({
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   // Handler Persetujuan & Penolakan Cuti oleh Kamad
+  const kamadSignerName = `${schoolProfile?.headmasterName || 'Drs. H. Akhmad Rosidi'} (Kepala Madrasah)`;
+
   const handleApproveLeave = async (leaveId, applicantName) => {
-    await updateLeaveStatus(leaveId, 'disetujui', 'Drs. H. Akhmad Rosidi (Kepala Madrasah)');
+    await updateLeaveStatus(leaveId, 'disetujui', kamadSignerName);
     if (onShowToast) {
       onShowToast('Permohonan Disetujui', `Pengajuan izin/cuti ${applicantName || 'pegawai'} telah disahkan secara resmi oleh Kamad.`, 'success');
     }
   };
 
   const handleRejectLeave = async (leaveId, applicantName) => {
-    await updateLeaveStatus(leaveId, 'ditolak', 'Drs. H. Akhmad Rosidi (Kepala Madrasah)');
+    await updateLeaveStatus(leaveId, 'ditolak', kamadSignerName);
     if (onShowToast) {
       onShowToast('Permohonan Ditolak', `Pengajuan izin/cuti ${applicantName || 'pegawai'} tidak disetujui.`, 'info');
     }
@@ -129,7 +141,7 @@ export default function KamadDashboard({
     const res = await updateLeaveStatus(
       kamadCancelTarget.id,
       'dibatalkan',
-      'Drs. H. Akhmad Rosidi (Kepala Madrasah)',
+      kamadSignerName,
       kamadCancelReason || 'Dibatalkan oleh Kepala Madrasah'
     );
     setIsProcessingAction(false);
@@ -268,10 +280,12 @@ export default function KamadDashboard({
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold text-white leading-tight">
-                  Drs. H. Akhmad Rosidi
+                  {schoolProfile?.headmasterName || 'Drs. H. Akhmad Rosidi'}
                 </p>
-                <p className="text-[10px] text-emerald-400 font-medium leading-tight">
-                  Kepala Madrasah
+                <p className="text-[10px] text-emerald-400 font-medium leading-tight font-mono">
+                  {schoolProfile?.headmasterNip && schoolProfile.headmasterNip !== '-'
+                    ? (schoolProfile.headmasterNip.toUpperCase().startsWith('NIP') ? schoolProfile.headmasterNip : `NIP. ${schoolProfile.headmasterNip}`)
+                    : 'Kepala Madrasah'}
                 </p>
               </div>
 

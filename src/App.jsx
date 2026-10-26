@@ -358,7 +358,7 @@ export default function App() {
               const session = {
                 viewMode: 'kamad',
                 userRole: 'kamad',
-                currentUser: { name: auth.userName || 'Kepala Madrasah', nip: 'kamad', role: 'kamad' }
+                currentUser: { name: auth.userName || 'Kepala Madrasah', nip: auth.nip || 'kamad', role: 'kamad' }
               };
               try {
                 localStorage.setItem('presensi_auth_session', JSON.stringify(session));
